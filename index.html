@@ -127,15 +127,6 @@
       .wheel-canvas-wrap { width: 92vw; height: 92vw; max-width: 420px; max-height: 420px;}
       canvas { width: 100%!important; height: 100%!important; }
     }
-    /* Для конфетти */
-    #confetti-canvas {
-      pointer-events: none;
-      position: fixed;
-      left: 0; top: 0;
-      width: 100vw; height: 100vh;
-      z-index: 999;
-      display: block;
-    }
   </style>
 </head>
 <body>
@@ -158,7 +149,6 @@
       <div id="copied" class="copied">Скопировано!</div>
     </div>
   </div>
-  <canvas id="confetti-canvas"></canvas>
   <!-- Звуки -->
   <audio id="roll-audio" src="0801.MP3"></audio>
   <audio id="win-audio" src="kids-saying-yay-sound-effect_3.mp3"></audio>
@@ -314,62 +304,6 @@
       }, 1200);
     }
 
-    // --- Конфетти
-    function throwConfetti() {
-      const canvas = document.getElementById('confetti-canvas');
-      const ctx = canvas.getContext('2d');
-      let W = window.innerWidth, H = window.innerHeight;
-      canvas.width = W; canvas.height = H;
-      const colors = ['#FFD700','#FF6B00','#66FF7F','#36C3FF','#F936C1','#fff','#ff3232','#cfff32'];
-      const confetti = [];
-      for(let i=0;i<180;++i){
-        confetti.push({
-          x: Math.random()*W,
-          y: Math.random()*-H,
-          r: 4 + Math.random()*5,
-          d: 8 + Math.random()*16,
-          color: colors[Math.floor(Math.random()*colors.length)],
-          tilt: Math.random()*10,
-          tiltAngle: 0,
-          tiltAngleInc: (Math.random()*0.07) + .03,
-          speed: 1.4 + Math.random()*2.5
-        });
-      }
-      let frame = 0, anim;
-      function draw(){
-        ctx.clearRect(0,0,W,H);
-        for(let i=0;i<confetti.length;++i){
-          let c = confetti[i];
-          ctx.beginPath();
-          ctx.lineWidth = c.r;
-          ctx.strokeStyle = c.color;
-          ctx.moveTo(c.x + c.tilt + c.r, c.y);
-          ctx.lineTo(c.x + c.tilt, c.y + c.d);
-          ctx.stroke();
-        }
-        update();
-        if(frame++<190){
-          anim = requestAnimationFrame(draw);
-        }else{
-          ctx.clearRect(0,0,W,H);
-        }
-      }
-      function update(){
-        for(let i=0;i<confetti.length;++i){
-          let c = confetti[i];
-          c.y += c.speed;
-          c.tiltAngle += c.tiltAngleInc;
-          c.tilt = Math.sin(c.tiltAngle) * 14;
-          if(c.y > H + 20){
-            c.x = Math.random()*W;
-            c.y = Math.random()*-16;
-            c.tilt = Math.random()*10;
-          }
-        }
-      }
-      draw();
-    }
-
     // --- Рулетка (16 секунд!)
     function spinWheel() {
       if (spinning) return;
@@ -427,7 +361,6 @@
       resultEl.classList.remove('bounce');
       setTimeout(()=>{ resultEl.classList.add('bounce'); }, 20);
       playWin();
-      throwConfetti(); // Конфетти при победе!
     }
 
     // --- Шорткаты (пробел или Enter)
