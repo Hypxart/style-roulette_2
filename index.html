@@ -150,7 +150,7 @@
     </div>
   </div>
   <!-- Звуки -->
-  <audio id="roll-audio" src="krutitsya-koleso-s-ukazatelem-38057.mp3"></audio>
+  <audio id="roll-audio" src="0801.MP3"></audio>
   <audio id="win-audio" src="https://cdn.pixabay.com/audio/2022/03/15/audio_114b9a2c09.mp3"></audio>
   <script>
     // --- Данные
@@ -304,7 +304,7 @@
       }, 1200);
     }
 
-    // --- Рулетка (36 секунд!)
+    // --- Рулетка (16 секунд!)
     function spinWheel() {
       if (spinning) return;
       spinning = true;
@@ -321,12 +321,11 @@
       const N = styles.length;
       const anglePerSlice = 2*Math.PI/N;
       const targetAngle = (3*Math.PI/2) - (winner * anglePerSlice) - anglePerSlice/2;
-      const spins = 80; // Много оборотов для 36 секунд
+      const spins = 35; // Количество оборотов для 16 секунд
       const finalRot = spins*2*Math.PI + targetAngle;
 
-      let t0 = null, duration = 36000, startRot = rotation; // 36 секунд = 36000мс
+      let t0 = null, duration = 16000, startRot = rotation; // 16 секунд = 16000мс
 
-      // Стартуем длинный звук вращения
       playRoll();
 
       function animate(ts) {
