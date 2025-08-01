@@ -149,8 +149,8 @@
       <div id="copied" class="copied">Скопировано!</div>
     </div>
   </div>
-  <!-- Тик-тик и победный звук -->
-  <audio id="tick-audio" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124b7cf3c1.mp3"></audio>
+  <!-- Звуки -->
+  <audio id="roll-audio" src="krutitsya-koleso-s-ukazatelem-38057.mp3"></audio>
   <audio id="win-audio" src="https://cdn.pixabay.com/audio/2022/03/15/audio_114b9a2c09.mp3"></audio>
   <script>
     // --- Данные
@@ -254,12 +254,19 @@
     drawWheel(rotation);
 
     // --- Звуки
-    let tickAudio = document.getElementById('tick-audio');
+    let rollAudio = document.getElementById('roll-audio');
     let winAudio = document.getElementById('win-audio');
-    function playTick() {
+    function playRoll() {
       try {
-        tickAudio.currentTime = 0.05;
-        tickAudio.play();
+        rollAudio.currentTime = 0;
+        rollAudio.loop = true;
+        rollAudio.play();
+      } catch(e) {}
+    }
+    function stopRoll() {
+      try {
+        rollAudio.pause();
+        rollAudio.currentTime = 0;
       } catch(e) {}
     }
     function playWin() {
@@ -297,7 +304,7 @@
       }, 1200);
     }
 
-    // --- Рулетка
+    // --- Рулетка (36 секунд!)
     function spinWheel() {
       if (spinning) return;
       spinning = true;
@@ -314,27 +321,22 @@
       const N = styles.length;
       const anglePerSlice = 2*Math.PI/N;
       const targetAngle = (3*Math.PI/2) - (winner * anglePerSlice) - anglePerSlice/2;
-      const spins = 7;
+      const spins = 80; // Много оборотов для 36 секунд
       const finalRot = spins*2*Math.PI + targetAngle;
 
-      let lastTickSector = null;
+      let t0 = null, duration = 36000, startRot = rotation; // 36 секунд = 36000мс
 
-      let t0 = null, duration = 3300, startRot = rotation;
+      // Стартуем длинный звук вращения
+      playRoll();
+
       function animate(ts) {
         if (!t0) t0 = ts;
         let t = ts - t0;
         let progress = Math.min(t/duration, 1);
+        // Очень плавное замедление
         let ease = 1 - Math.pow(1-progress, 3);
         rotation = startRot + (finalRot-startRot)*ease;
         drawWheel(rotation);
-
-        // "Тик" каждый раз, когда проходит сектор стрелки
-        let pointerAngle = (3*Math.PI/2 - rotation + 2*Math.PI) % (2*Math.PI);
-        let currentSector = Math.floor((pointerAngle) / anglePerSlice) % N;
-        if (currentSector !== lastTickSector && t < duration * 0.98) {
-          playTick();
-          lastTickSector = currentSector;
-        }
 
         if (progress < 1) {
           requestAnimationFrame(animate);
@@ -342,6 +344,7 @@
           spinning = false;
           rotation = finalRot % (2*Math.PI);
           drawWheel(rotation);
+          stopRoll();
           startPulse(winnerIndex);
           showResult();
           animateBgTo(styles[winnerIndex].color);
