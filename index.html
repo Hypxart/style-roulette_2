@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Круглая рулетка стилей</title>
+  <style>
+    body {
+      background: #111;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+      transition: background 1.3s cubic-bezier(.66,.01,.22,.99);
+      overflow-x: hidden;
+    }
+    .main-flex {
+      display: flex;
+      gap: 60px;
+      align-items: flex-start;
+      justify-content: center;
+      width: 100%;
+      max-width: 1100px;
+    }
+    .wheel-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 420px;
+      position: relative;
+    }
+    .wheel-canvas-wrap {
+      position: relative;
+      width: 420px; height: 420px;
+      margin-bottom: 28px;
+      margin-top: 8px;
+    }
+    canvas {
+      border-radius: 50%;
+      background: #22263b;
+      box-shadow: 0 6px 32px #0008;
+    }
+    .pointer {
+      position: absolute;
+      left: 50%; top: -22px;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 24px solid transparent;
+      border-right: 24px solid transparent;
+      border-bottom: 36px solid #ffe047;
+      z-index: 2;
+      filter: drop-shadow(0 2px 12px #0005);
+    }
+    .roll-btn {
+      padding: 16px 46px;
+      font-size: 1.3rem;
+      border: none; border-radius: 28px;
+      background: linear-gradient(90deg, #ff9d4b, #397dff);
+      color: #fff; font-weight: bold;
+      box-shadow: 0 4px 24px #0004;
+      cursor: pointer; margin-top: 14px;
+      transition: transform 0.09s;
+    }
+    .roll-btn:active { transform: scale(0.96);}
+    .result {
+      margin-top: 22px;
+      font-size: 1.25rem;
+      color: #fff;
+      font-weight: bold;
+      min-height: 38px;
+      text-shadow: 0 2px 14px #0007;
+      text-align: center;
+      opacity: 1;
+      transition: opacity 0.4s, transform 0.35s cubic-bezier(.18,.87,.37,1.22);
+      transform: scale(1);
+    }
+    .result.hide { opacity: 0; }
+    .result.bounce {
+      animation: bounce 0.60s cubic-bezier(.2,.9,.38,1.12);
+    }
+    @keyframes bounce {
+      0% { transform: scale(0.8);}
+      60% { transform: scale(1.09);}
+      80% { transform: scale(0.96);}
+      100% { transform: scale(1);}
+    }
+    .copy-area {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      min-width: 260px;
+      margin-top: 36px;
+    }
+    .tab-btn {
+      padding: 14px 20px;
+      font-size: 1.08rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px #0002;
+      transition: transform 0.1s;
+    }
+    .tab-btn:active { transform: scale(0.97);}
+    .pixar      { background: #ff9d4b; color: #fff; }
+    .simpsons   { background: #ffe047; color: #222; }
+    .lego       { background: #ea212d; color: #fff; }
+    .cyberpunk  { background: #00b5d6; color: #fff; }
+    .dragonball { background: #397dff; color: #fff; }
+    .rickmorty  { background: #5cf274; color: #234; }
+    .copied {
+      margin-top: 20px;
+      background: #222; color: #fff; padding: 13px 22px;
+      border-radius: 24px; font-size: 1.1rem; box-shadow: 0 4px 24px #0005;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+      text-align: center;
+      z-index: 100;
+      position: relative;
+    }
+    .copied.active { opacity: 1; }
+    @media (max-width: 900px) {
+      .main-flex { flex-direction: column; align-items: center; gap: 36px;}
+      .wheel-wrapper { min-width: unset; }
+      .copy-area { min-width: unset;}
+      .wheel-canvas-wrap { width: 92vw; height: 92vw; max-width: 420px; max-height: 420px;}
+      canvas { width: 100%!important; height: 100%!important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-flex">
+    <div class="wheel-wrapper">
+      <div class="wheel-canvas-wrap">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="420" height="420"></canvas>
+      </div>
+      <button class="roll-btn" onclick="spinWheel()" id="rollBtn">Крутить колесо</button>
+      <div class="result hide" id="result"></div>
+    </div>
+    <div class="copy-area">
+      <button class="tab-btn pixar"      onclick="copyText(0)">Pixar</button>
+      <button class="tab-btn simpsons"   onclick="copyText(1)">Simpsons</button>
+      <button class="tab-btn lego"       onclick="copyText(2)">Lego</button>
+      <button class="tab-btn cyberpunk"  onclick="copyText(3)">Cyberpunk</button>
+      <button class="tab-btn dragonball" onclick="copyText(4)">Dragon Ball</button>
+      <button class="tab-btn rickmorty"  onclick="copyText(5)">Rick And Morty</button>
+      <div id="copied" class="copied">Скопировано!</div>
+    </div>
+  </div>
+  <!-- Тик-тик и победный звук -->
+  <audio id="tick-audio" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124b7cf3c1.mp3"></audio>
+  <audio id="win-audio" src="https://cdn.pixabay.com/audio/2022/03/15/audio_114b9a2c09.mp3"></audio>
+  <script>
+    // --- Данные
+    const styles = [
+      {name: "Pixar",      class: "pixar",      color: "#ff9d4b"},
+      {name: "Simpsons",   class: "simpsons",   color: "#ffe047"},
+      {name: "Lego",       class: "lego",       color: "#ea212d"},
+      {name: "Cyberpunk",  class: "cyberpunk",  color: "#00b5d6"},
+      {name: "Dragon Ball",class: "dragonball", color: "#397dff"},
+      {name: "Rick And Morty", class: "rickmorty", color: "#5cf274"},
+    ];
+    const texts = [
+      "Сделай изображение в стиле Pixar, сохрани все детали исходного изображения. Сделай атмосферно и визуально красиво. Лицо, поза, выражение, одежда, фон и композиция должны соответствовать оригиналу. Все важные элементы на фото должны остаться. Разрешение 16:9.",
+      "Сделай изображение в стиле Simpsons, сохрани все детали исходного изображения. Сделай атмосферно и визуально красиво. Лицо, поза, выражение, одежда, фон и композиция должны соответствовать оригиналу. Все важные элементы на фото должны остаться. Разрешение 16:9.",
+      "Сделай изображение, где персонажи изображены как настоящие минифигурки LEGO, с классическими пропорциями: жёлтые головы, цилиндрические руки, сгибающиеся ноги, пластиковые текстуры. Используй визуальный стиль как в официальных наборах LEGO или в фильме LEGO Movie. Сохрани композицию, позу и выражение лица оригинального изображения. Сделай атмосферно. Разрешение 16:9.",
+      "Сделай изображение в стиле Cyberpunk: Edgerunners, сохрани все детали исходного изображения. Сделай атмосферно и визуально красиво. Лицо, поза, выражение, одежда, фон и композиция должны соответствовать оригиналу. Все важные элементы на фото должны остаться. Разрешение 16:9.",
+      "Сделай изображение в стиле Dragon Ball Z, сохрани все детали исходного изображения. Сделай атмосферно и визуально красиво. Лицо, поза, выражение, одежда, фон и композиция должны соответствовать оригиналу. Все важные элементы на фото должны остаться. Разрешение 16:9.",
+      "Сделай изображение в стиле мультсериала Rick and Morty: мультяшный. Сохрани выражение, позу и детали оригинального изображения. Разрешение 16:9."
+    ];
+
+    function copyText(idx) {
+      navigator.clipboard.writeText(texts[idx]);
+      let copied = document.getElementById('copied');
+      copied.classList.add('active');
+      setTimeout(() => copied.classList.remove('active'), 1500);
+    }
+
+    // --- Колесо
+    const wheelCanvas = document.getElementById('wheel');
+    const ctx = wheelCanvas.getContext('2d');
+    const w = wheelCanvas.width, h = wheelCanvas.height, r = w/2;
+    let rotation = 0;
+    let spinning = false;
+    let winnerIndex = null;
+    let unusedIndexes = Array.from(styles.keys());
+
+    // Мерцание (пульсация) сектора-победителя
+    let highlightWinner = null;
+    let highlightPulse = 0; // 0..1
+
+    function drawWheel(rot=0) {
+      ctx.clearRect(0,0,w,h);
+      const N = styles.length;
+      const angleStep = 2 * Math.PI / N;
+
+      for (let i=0; i<N; ++i) {
+        const angle1 = i*angleStep + rot;
+        const angle2 = (i+1)*angleStep + rot;
+        ctx.beginPath();
+        ctx.moveTo(r,r);
+        ctx.arc(r,r, r-6, angle1, angle2, false);
+        ctx.closePath();
+        ctx.fillStyle = styles[i].color;
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Текст
+        ctx.save();
+        ctx.translate(r,r);
+        ctx.rotate(angle1 + angleStep/2);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "bold 20px Segoe UI, sans-serif";
+        ctx.fillStyle = (i==1) ? "#222" : "#fff";
+        ctx.shadowColor = "rgba(30,30,30,0.30)";
+        ctx.shadowBlur = 3;
+        ctx.fillText(styles[i].name, r*0.62, 0);
+        ctx.restore();
+      }
+      // Пульсирующая тень вокруг сектора-победителя
+      if (highlightWinner !== null && highlightPulse > 0) {
+        let i = highlightWinner;
+        const angle1 = i*angleStep + rot;
+        const angle2 = (i+1)*angleStep + rot;
+        let pulse = 0.7 + 0.3 * Math.sin(performance.now()/90); // мягкое мерцание
+        ctx.save();
+        ctx.globalAlpha = 0.53 * highlightPulse;
+        ctx.shadowColor = styles[i].color;
+        ctx.shadowBlur = 60 + 38 * pulse * highlightPulse;
+        ctx.beginPath();
+        ctx.moveTo(r,r);
+        ctx.arc(r,r, r-2, angle1, angle2, false);
+        ctx.closePath();
+        ctx.lineWidth = 19;
+        ctx.strokeStyle = styles[i].color;
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Центр
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(r,r,48,0,2*Math.PI);
+      ctx.fillStyle="#191921";
+      ctx.shadowColor="#fff8";
+      ctx.shadowBlur=10;
+      ctx.fill();
+      ctx.restore();
+    }
+    drawWheel(rotation);
+
+    // --- Звуки
+    let tickAudio = document.getElementById('tick-audio');
+    let winAudio = document.getElementById('win-audio');
+    function playTick() {
+      try {
+        tickAudio.currentTime = 0.05;
+        tickAudio.play();
+      } catch(e) {}
+    }
+    function playWin() {
+      try {
+        winAudio.currentTime = 0;
+        winAudio.play();
+      } catch(e) {}
+    }
+
+    // --- Анимация пульсации сектора
+    function startPulse(winnerIdx) {
+      highlightWinner = winnerIdx;
+      highlightPulse = 1;
+      let pulseTime = 0;
+      function pulseStep() {
+        pulseTime += 18;
+        if (pulseTime > 1200) {
+          highlightPulse = 0;
+          highlightWinner = null;
+          drawWheel(rotation);
+        } else {
+          highlightPulse = 1 - pulseTime/1200;
+          drawWheel(rotation);
+          requestAnimationFrame(pulseStep);
+        }
+      }
+      pulseStep();
+    }
+
+    // --- Плавная смена фона
+    function animateBgTo(color) {
+      document.body.style.background = color;
+      setTimeout(()=>{
+        document.body.style.background = "#111";
+      }, 1200);
+    }
+
+    // --- Рулетка
+    function spinWheel() {
+      if (spinning) return;
+      spinning = true;
+      let resultEl = document.getElementById('result');
+      resultEl.classList.add('hide');
+      resultEl.classList.remove('bounce');
+
+      if (unusedIndexes.length === 0) unusedIndexes = Array.from(styles.keys());
+      const idxInPool = Math.floor(Math.random()*unusedIndexes.length);
+      const winner = unusedIndexes[idxInPool];
+      winnerIndex = winner;
+      unusedIndexes.splice(idxInPool, 1);
+
+      const N = styles.length;
+      const anglePerSlice = 2*Math.PI/N;
+      const targetAngle = (3*Math.PI/2) - (winner * anglePerSlice) - anglePerSlice/2;
+      const spins = 7;
+      const finalRot = spins*2*Math.PI + targetAngle;
+
+      let lastTickSector = null;
+
+      let t0 = null, duration = 3300, startRot = rotation;
+      function animate(ts) {
+        if (!t0) t0 = ts;
+        let t = ts - t0;
+        let progress = Math.min(t/duration, 1);
+        let ease = 1 - Math.pow(1-progress, 3);
+        rotation = startRot + (finalRot-startRot)*ease;
+        drawWheel(rotation);
+
+        // "Тик" каждый раз, когда проходит сектор стрелки
+        let pointerAngle = (3*Math.PI/2 - rotation + 2*Math.PI) % (2*Math.PI);
+        let currentSector = Math.floor((pointerAngle) / anglePerSlice) % N;
+        if (currentSector !== lastTickSector && t < duration * 0.98) {
+          playTick();
+          lastTickSector = currentSector;
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          spinning = false;
+          rotation = finalRot % (2*Math.PI);
+          drawWheel(rotation);
+          startPulse(winnerIndex);
+          showResult();
+          animateBgTo(styles[winnerIndex].color);
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function showResult() {
+      const i = winnerIndex;
+      let resultEl = document.getElementById('result');
+      let html = `Выпало: <span class="${styles[i].class}" style="padding:2px 16px; border-radius:12px;">${styles[i].name}</span>`;
+      resultEl.innerHTML = html;
+      resultEl.classList.remove('hide');
+      resultEl.classList.remove('bounce');
+      setTimeout(()=>{ resultEl.classList.add('bounce'); }, 20);
+      playWin();
+    }
+
+    // --- Шорткаты (пробел или Enter)
+    document.addEventListener('keydown', function(e) {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        spinWheel();
+        e.preventDefault();
+      }
+    });
+
+  </script>
+</body>
+</html>
