@@ -127,6 +127,7 @@
       .wheel-canvas-wrap { width: 92vw; height: 92vw; max-width: 420px; max-height: 420px;}
       canvas { width: 100%!important; height: 100%!important; }
     }
+    /* Для конфетти */
     #confetti-canvas {
       pointer-events: none;
       position: fixed;
@@ -134,34 +135,6 @@
       width: 100vw; height: 100vh;
       z-index: 999;
       display: block;
-    }
-    .music-bar {
-      position: fixed; bottom: 30px; left: 50%;
-      transform: translateX(-50%);
-      background: #202020e0;
-      border-radius: 22px;
-      padding: 16px 28px;
-      box-shadow: 0 8px 32px #0008;
-      display: flex; align-items: center; gap: 15px;
-      z-index: 2000;
-      min-width: 310px;
-      font-size: 1.06rem;
-      user-select: none;
-    }
-    .music-bar select {
-      padding: 7px 14px; border-radius: 9px; border:none;
-      background: #252525; color:#fff; font-size:1.02rem;
-    }
-    .music-bar button {
-      padding:7px 15px; font-size:1.08rem; border-radius:8px; background:#444; color:#fff; border:none; font-weight:bold;
-      transition:background 0.13s;
-    }
-    .music-bar button:hover { background:#555;}
-    .music-bar input[type="range"] {
-      width: 110px;
-    }
-    .music-bar label {
-      color: #fff; font-size: 1.02rem;
     }
   </style>
 </head>
@@ -186,27 +159,285 @@
     </div>
   </div>
   <canvas id="confetti-canvas"></canvas>
-
-  <!-- Музыкальный плеер -->
-  <div class="music-bar">
-    <select id="music-select">
-      <option value="1-Yeat-GEEK-TIM--SREDRL.mp3">Yeat - GEEK TIM</option>
-      <option value="1-Yeat-IM-YEAT-KHRYXQ.mp3">Yeat - IM YEAT</option>
-      <option value="2-Yeat-LOCO-55VX73.mp3">Yeat - LOCO</option>
-      <option value="24-for-lyfe.mp3">For Lyfe</option>
-    </select>
-    <button id="music-play">▶</button>
-    <label for="music-volume">Громкость</label>
-    <input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.7">
-  </div>
-  <audio id="music-player" src="1-Yeat-GEEK-TIM--SREDRL.mp3" loop></audio>
-  <!-- Звуки рулетки -->
+  <!-- Звуки -->
   <audio id="roll-audio" src="0801.MP3"></audio>
   <audio id="win-audio" src="kids-saying-yay-sound-effect_3.mp3"></audio>
   <script>
-    // --- Весь твой JS (как в прошлом сообщении) ---
-    // Просто скопируй JS из прошлого полного ответа — он совместим.
-    // Если надо — напишу весь скрипт снова, скажи!
+    // --- Данные
+    const styles = [
+      {name: "Pixar",      class: "pixar",      color: "#ff9d4b"},
+      {name: "Simpsons",   class: "simpsons",   color: "#ffe047"},
+      {name: "Lego",       class: "lego",       color: "#ea212d"},
+      {name: "Cyberpunk",  class: "cyberpunk",  color: "#00b5d6"},
+      {name: "Dragon Ball",class: "dragonball", color: "#397dff"},
+      {name: "Rick And Morty", class: "rickmorty", color: "#5cf274"},
+    ];
+    const texts = [
+      "Сделай изображение в стиле Pixar, сохрани все детали исходного изображения. Сделай атмосферно и визуально красиво. Лицо, поза, выражение, одежда, фон и композиция должны соответствовать оригиналу. Все важные элементы на фото должны остаться. Разрешение 16:9.",
+      "Сделай изображение в стиле Simpsons, сохрани все детали исходного изображения. Сделай атмосферно и визуально красиво. Лицо, поза, выражение, одежда, фон и композиция должны соответствовать оригиналу. Все важные элементы на фото должны остаться. Разрешение 16:9.",
+      "Сделай изображение, где персонажи изображены как настоящие минифигурки LEGO, с классическими пропорциями: жёлтые головы, цилиндрические руки, сгибающиеся ноги, пластиковые текстуры. Используй визуальный стиль как в официальных наборах LEGO или в фильме LEGO Movie. Сохрани композицию, позу и выражение лица оригинального изображения. Сделай атмосферно. Разрешение 16:9.",
+      "Сделай изображение в стиле Cyberpunk: Edgerunners, сохрани все детали исходного изображения. Сделай атмосферно и визуально красиво. Лицо, поза, выражение, одежда, фон и композиция должны соответствовать оригиналу. Все важные элементы на фото должны остаться. Разрешение 16:9.",
+      "Сделай изображение в стиле Dragon Ball Z, сохрани все детали исходного изображения. Сделай атмосферно и визуально красиво. Лицо, поза, выражение, одежда, фон и композиция должны соответствовать оригиналу. Все важные элементы на фото должны остаться. Разрешение 16:9.",
+      "Сделай изображение в стиле мультсериала Rick and Morty: мультяшный. Сохрани выражение, позу и детали оригинального изображения. Разрешение 16:9."
+    ];
+
+    function copyText(idx) {
+      navigator.clipboard.writeText(texts[idx]);
+      let copied = document.getElementById('copied');
+      copied.classList.add('active');
+      setTimeout(() => copied.classList.remove('active'), 1500);
+    }
+
+    // --- Колесо
+    const wheelCanvas = document.getElementById('wheel');
+    const ctx = wheelCanvas.getContext('2d');
+    const w = wheelCanvas.width, h = wheelCanvas.height, r = w/2;
+    let rotation = 0;
+    let spinning = false;
+    let winnerIndex = null;
+    let unusedIndexes = Array.from(styles.keys());
+
+    // Мерцание (пульсация) сектора-победителя
+    let highlightWinner = null;
+    let highlightPulse = 0; // 0..1
+
+    function drawWheel(rot=0) {
+      ctx.clearRect(0,0,w,h);
+      const N = styles.length;
+      const angleStep = 2 * Math.PI / N;
+
+      for (let i=0; i<N; ++i) {
+        const angle1 = i*angleStep + rot;
+        const angle2 = (i+1)*angleStep + rot;
+        ctx.beginPath();
+        ctx.moveTo(r,r);
+        ctx.arc(r,r, r-6, angle1, angle2, false);
+        ctx.closePath();
+        ctx.fillStyle = styles[i].color;
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Текст
+        ctx.save();
+        ctx.translate(r,r);
+        ctx.rotate(angle1 + angleStep/2);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "bold 20px Segoe UI, sans-serif";
+        ctx.fillStyle = (i==1) ? "#222" : "#fff";
+        ctx.shadowColor = "rgba(30,30,30,0.30)";
+        ctx.shadowBlur = 3;
+        ctx.fillText(styles[i].name, r*0.62, 0);
+        ctx.restore();
+      }
+      // Пульсирующая тень вокруг сектора-победителя
+      if (highlightWinner !== null && highlightPulse > 0) {
+        let i = highlightWinner;
+        const angle1 = i*angleStep + rot;
+        const angle2 = (i+1)*angleStep + rot;
+        let pulse = 0.7 + 0.3 * Math.sin(performance.now()/90); // мягкое мерцание
+        ctx.save();
+        ctx.globalAlpha = 0.53 * highlightPulse;
+        ctx.shadowColor = styles[i].color;
+        ctx.shadowBlur = 60 + 38 * pulse * highlightPulse;
+        ctx.beginPath();
+        ctx.moveTo(r,r);
+        ctx.arc(r,r, r-2, angle1, angle2, false);
+        ctx.closePath();
+        ctx.lineWidth = 19;
+        ctx.strokeStyle = styles[i].color;
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Центр
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(r,r,48,0,2*Math.PI);
+      ctx.fillStyle="#191921";
+      ctx.shadowColor="#fff8";
+      ctx.shadowBlur=10;
+      ctx.fill();
+      ctx.restore();
+    }
+    drawWheel(rotation);
+
+    // --- Звуки
+    let rollAudio = document.getElementById('roll-audio');
+    let winAudio = document.getElementById('win-audio');
+    function playRoll() {
+      try {
+        rollAudio.currentTime = 0;
+        rollAudio.loop = true;
+        rollAudio.play();
+      } catch(e) {}
+    }
+    function stopRoll() {
+      try {
+        rollAudio.pause();
+        rollAudio.currentTime = 0;
+      } catch(e) {}
+    }
+    function playWin() {
+      try {
+        winAudio.currentTime = 0;
+        winAudio.play();
+      } catch(e) {}
+    }
+
+    // --- Анимация пульсации сектора
+    function startPulse(winnerIdx) {
+      highlightWinner = winnerIdx;
+      highlightPulse = 1;
+      let pulseTime = 0;
+      function pulseStep() {
+        pulseTime += 18;
+        if (pulseTime > 1200) {
+          highlightPulse = 0;
+          highlightWinner = null;
+          drawWheel(rotation);
+        } else {
+          highlightPulse = 1 - pulseTime/1200;
+          drawWheel(rotation);
+          requestAnimationFrame(pulseStep);
+        }
+      }
+      pulseStep();
+    }
+
+    // --- Плавная смена фона
+    function animateBgTo(color) {
+      document.body.style.background = color;
+      setTimeout(()=>{
+        document.body.style.background = "#111";
+      }, 1200);
+    }
+
+    // --- Конфетти
+    function throwConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      let W = window.innerWidth, H = window.innerHeight;
+      canvas.width = W; canvas.height = H;
+      const colors = ['#FFD700','#FF6B00','#66FF7F','#36C3FF','#F936C1','#fff','#ff3232','#cfff32'];
+      const confetti = [];
+      for(let i=0;i<180;++i){
+        confetti.push({
+          x: Math.random()*W,
+          y: Math.random()*-H,
+          r: 4 + Math.random()*5,
+          d: 8 + Math.random()*16,
+          color: colors[Math.floor(Math.random()*colors.length)],
+          tilt: Math.random()*10,
+          tiltAngle: 0,
+          tiltAngleInc: (Math.random()*0.07) + .03,
+          speed: 1.4 + Math.random()*2.5
+        });
+      }
+      let frame = 0, anim;
+      function draw(){
+        ctx.clearRect(0,0,W,H);
+        for(let i=0;i<confetti.length;++i){
+          let c = confetti[i];
+          ctx.beginPath();
+          ctx.lineWidth = c.r;
+          ctx.strokeStyle = c.color;
+          ctx.moveTo(c.x + c.tilt + c.r, c.y);
+          ctx.lineTo(c.x + c.tilt, c.y + c.d);
+          ctx.stroke();
+        }
+        update();
+        if(frame++<190){
+          anim = requestAnimationFrame(draw);
+        }else{
+          ctx.clearRect(0,0,W,H);
+        }
+      }
+      function update(){
+        for(let i=0;i<confetti.length;++i){
+          let c = confetti[i];
+          c.y += c.speed;
+          c.tiltAngle += c.tiltAngleInc;
+          c.tilt = Math.sin(c.tiltAngle) * 14;
+          if(c.y > H + 20){
+            c.x = Math.random()*W;
+            c.y = Math.random()*-16;
+            c.tilt = Math.random()*10;
+          }
+        }
+      }
+      draw();
+    }
+
+    // --- Рулетка (16 секунд!)
+    function spinWheel() {
+      if (spinning) return;
+      spinning = true;
+      let resultEl = document.getElementById('result');
+      resultEl.classList.add('hide');
+      resultEl.classList.remove('bounce');
+
+      if (unusedIndexes.length === 0) unusedIndexes = Array.from(styles.keys());
+      const idxInPool = Math.floor(Math.random()*unusedIndexes.length);
+      const winner = unusedIndexes[idxInPool];
+      winnerIndex = winner;
+      unusedIndexes.splice(idxInPool, 1);
+
+      const N = styles.length;
+      const anglePerSlice = 2*Math.PI/N;
+      const targetAngle = (3*Math.PI/2) - (winner * anglePerSlice) - anglePerSlice/2;
+      const spins = 35; // Количество оборотов для 16 секунд
+      const finalRot = spins*2*Math.PI + targetAngle;
+
+      let t0 = null, duration = 16000, startRot = rotation; // 16 секунд = 16000мс
+
+      playRoll();
+
+      function animate(ts) {
+        if (!t0) t0 = ts;
+        let t = ts - t0;
+        let progress = Math.min(t/duration, 1);
+        // Очень плавное замедление
+        let ease = 1 - Math.pow(1-progress, 3);
+        rotation = startRot + (finalRot-startRot)*ease;
+        drawWheel(rotation);
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          spinning = false;
+          rotation = finalRot % (2*Math.PI);
+          drawWheel(rotation);
+          stopRoll();
+          startPulse(winnerIndex);
+          showResult();
+          animateBgTo(styles[winnerIndex].color);
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function showResult() {
+      const i = winnerIndex;
+      let resultEl = document.getElementById('result');
+      let html = `Выпало: <span class="${styles[i].class}" style="padding:2px 16px; border-radius:12px;">${styles[i].name}</span>`;
+      resultEl.innerHTML = html;
+      resultEl.classList.remove('hide');
+      resultEl.classList.remove('bounce');
+      setTimeout(()=>{ resultEl.classList.add('bounce'); }, 20);
+      playWin();
+      throwConfetti(); // Конфетти при победе!
+    }
+
+    // --- Шорткаты (пробел или Enter)
+    document.addEventListener('keydown', function(e) {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        spinWheel();
+        e.preventDefault();
+      }
+    });
+
   </script>
 </body>
 </html>
