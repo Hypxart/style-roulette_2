@@ -127,6 +127,34 @@
       .wheel-canvas-wrap { width: 92vw; height: 92vw; max-width: 420px; max-height: 420px;}
       canvas { width: 100%!important; height: 100%!important; }
     }
+    .music-bar {
+      position: fixed; bottom: 30px; left: 50%;
+      transform: translateX(-50%);
+      background: #202020e0;
+      border-radius: 22px;
+      padding: 16px 28px;
+      box-shadow: 0 8px 32px #0008;
+      display: flex; align-items: center; gap: 15px;
+      z-index: 2000;
+      min-width: 310px;
+      font-size: 1.06rem;
+      user-select: none;
+    }
+    .music-bar select {
+      padding: 7px 14px; border-radius: 9px; border:none;
+      background: #252525; color:#fff; font-size:1.02rem;
+    }
+    .music-bar button {
+      padding:7px 15px; font-size:1.08rem; border-radius:8px; background:#444; color:#fff; border:none; font-weight:bold;
+      transition:background 0.13s;
+    }
+    .music-bar button:hover { background:#555;}
+    .music-bar input[type="range"] {
+      width: 110px;
+    }
+    .music-bar label {
+      color: #fff; font-size: 1.02rem;
+    }
   </style>
 </head>
 <body>
@@ -149,6 +177,22 @@
       <div id="copied" class="copied">Скопировано!</div>
     </div>
   </div>
+  <!-- Музыкальный плеер -->
+  <div class="music-bar">
+    <select id="music-select">
+      <option value="1-Yeat-GEEK-TIM--SREDRL.mp3">Yeat - GEEK TIM</option>
+      <option value="1-Yeat-IM-YEAT-KHRYXQ.mp3">Yeat - IM YEAT</option>
+      <option value="2-Yeat-LOCO-55VX73.mp3">Yeat - LOCO</option>
+      <option value="24-for-lyfe.mp3">For Lyfe</option>
+    </select>
+    <button id="music-play">▶</button>
+    <label for="music-volume">Громкость</label>
+    <input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.7">
+  </div>
+  <audio id="music-player" src="1-Yeat-GEEK-TIM--SREDRL.mp3" loop></audio>
+  <!-- Звуки рулетки -->
+  <audio id="roll-audio" src="0801.MP3"></audio>
+  <audio id="win-audio" src="kids-saying-yay-sound-effect_3.mp3"></audio>
   <script>
     // --- Данные
     const styles = [
@@ -250,6 +294,29 @@
     }
     drawWheel(rotation);
 
+    // --- Звуки рулетки
+    let rollAudio = document.getElementById('roll-audio');
+    let winAudio = document.getElementById('win-audio');
+    function playRoll() {
+      try {
+        rollAudio.currentTime = 0;
+        rollAudio.loop = true;
+        rollAudio.play();
+      } catch(e) {}
+    }
+    function stopRoll() {
+      try {
+        rollAudio.pause();
+        rollAudio.currentTime = 0;
+      } catch(e) {}
+    }
+    function playWin() {
+      try {
+        winAudio.currentTime = 0;
+        winAudio.play();
+      } catch(e) {}
+    }
+
     // --- Анимация пульсации сектора
     function startPulse(winnerIdx) {
       highlightWinner = winnerIdx;
@@ -300,6 +367,8 @@
 
       let t0 = null, duration = 16000, startRot = rotation;
 
+      playRoll();
+
       function animate(ts) {
         if (!t0) t0 = ts;
         let t = ts - t0;
@@ -314,6 +383,7 @@
           spinning = false;
           rotation = finalRot % (2*Math.PI);
           drawWheel(rotation);
+          stopRoll();
           startPulse(winnerIndex);
           showResult();
           animateBgTo(styles[winnerIndex].color);
@@ -330,7 +400,44 @@
       resultEl.classList.remove('hide');
       resultEl.classList.remove('bounce');
       setTimeout(()=>{ resultEl.classList.add('bounce'); }, 20);
+      playWin();
     }
+
+    // --- Музыкальный плеер
+    const musicPlayer = document.getElementById('music-player');
+    const musicPlayBtn = document.getElementById('music-play');
+    const musicSelect = document.getElementById('music-select');
+    const musicVol = document.getElementById('music-volume');
+    let musicPlaying = false;
+
+    musicPlayBtn.onclick = function() {
+      if (!musicPlaying) {
+        musicPlayer.play();
+        musicPlayBtn.textContent = '⏸';
+        musicPlaying = true;
+      } else {
+        musicPlayer.pause();
+        musicPlayBtn.textContent = '▶';
+        musicPlaying = false;
+      }
+    };
+
+    musicSelect.onchange = function() {
+      const wasPlaying = musicPlaying;
+      musicPlayer.src = musicSelect.value;
+      musicPlayer.currentTime = 0;
+      if (wasPlaying) {
+        musicPlayer.play();
+      }
+    };
+
+    musicVol.oninput = function() {
+      musicPlayer.volume = +musicVol.value;
+    };
+
+    musicPlayer.onpause = ()=>{ musicPlayBtn.textContent = '▶'; musicPlaying = false; };
+    musicPlayer.onplay = ()=>{ musicPlayBtn.textContent = '⏸'; musicPlaying = true; };
+    musicPlayer.volume = +musicVol.value;
 
     // --- Шорткаты (пробел или Enter)
     document.addEventListener('keydown', function(e) {
